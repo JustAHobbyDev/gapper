@@ -189,4 +189,132 @@ We don't yet know how much surrounding context the eventual detector will need, 
 
 # Recency
 
-Current dat
+Current date for this experiment:
+
+**September 19, 2026**
+
+We want the corpus to be as recent as possible.
+
+The initial target is roughly the preceding 24 hours rather than a historical archive.
+
+If source behavior makes an exact 24-hour boundary impractical, preserve timestamps and document the actual captured interval rather than silently approximating it.
+
+---
+
+# No semantic filtering
+
+The raw corpus should include boring material.
+
+That is intentional.
+
+Do not exclude items merely because they appear:
+
+* irrelevant to business
+* purely technical
+* casual
+* political
+* argumentative
+* unrelated to AI
+* unrelated to automation
+* unlikely to contain a commercial opportunity
+
+We need negative examples as well as positive examples.
+
+Otherwise we cannot later estimate how sparse the useful signal really is.
+
+Source-level exclusions needed for technical or access reasons are different and should simply be documented.
+
+---
+
+# Ethical/access constraint
+
+Use public interfaces and respect the sources' access expectations and published restrictions.
+
+We are not asking for:
+
+* authentication circumvention
+* rate-limit bypasses
+* anti-bot evasion
+* private content
+* restricted user data
+
+For this first probe, Hacker News and Make were chosen partly because they expose public interfaces suitable for legitimate collection.
+
+---
+
+# Desired outputs
+
+Produce:
+
+### 1. Raw corpus
+
+A machine-readable collection of the captured HN and Make content.
+
+JSONL would be convenient for later model experimentation, but choose an appropriate representation if there is a strong reason to do otherwise.
+
+### 2. Collection summary
+
+A concise report describing:
+
+* exact time interval captured
+* number of records by source
+* breakdown by item type
+* any known missing or skipped material
+* any source/API behavior that affected completeness
+* whether thread/parent relationships were successfully preserved
+* any unexpected characteristics of the source data
+
+### 3. Reproducible acquisition capability
+
+Leave behind whatever is necessary so the same collection can be run again against a later time window.
+
+The specific implementation is up to you.
+
+### 4. Representative sanity samples
+
+Include a small handful of raw records from each source so we can visually verify that:
+
+* text is present
+* timestamps make sense
+* provenance is correct
+* relationships appear correct
+* we have not accidentally collected only titles or metadata
+
+---
+
+# Acceptance criteria
+
+We should consider this experiment successful if:
+
+* we have a recent corpus from **both HN and Make**;
+* comments/replies are represented, not only top-level posts;
+* collection was not based on AI/opportunity keywords;
+* timestamps allow us to understand the capture interval;
+* records can be traced back to their public source;
+* conversational relationships are retained where the source exposes them;
+* obvious collection gaps or ambiguities are documented rather than hidden;
+* the result is suitable for us to inspect next and ask, empirically, what kinds of work-problem disclosures actually occur.
+
+---
+
+# Explicit non-goals
+
+Do **not** yet:
+
+* identify leads;
+* score opportunities;
+* classify business pain;
+* determine whether disclosures are organic;
+* infer technical ability;
+* infer willingness to pay;
+* generate outreach;
+* cluster opportunity types;
+* build a dashboard;
+* train a classifier;
+* decide what the final Opportunity Detector architecture should be.
+
+Those decisions should be informed by the corpus produced here rather than baked into its collection.
+
+The immediate goal is much simpler:
+
+> **Give us an honest, recent slice of what people are actually saying on these sources so that the next design decisions can be based on evidence instead of imagined examples.**

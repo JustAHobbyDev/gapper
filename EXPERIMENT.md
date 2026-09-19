@@ -74,3 +74,31 @@ represents typical source volume or opportunity prevalence.
 
 No keyword retrieval, AI/pain/buying-intent filters, opportunity classification,
 scoring, or detector design was performed. Raw content remains local and out of Git.
+
+## Complete-handoff audit — 2026-09-19
+
+The full handoff supersedes the previously truncated copy in
+`handoff/001-raw-acquisition-probe.md`. Its recency, no-semantic-filtering, public
+access, collection-summary, reproducibility, and non-goal requirements match the
+implemented experiment. The missing output was an explicit set of sanity samples.
+
+Added `python3 sanity.py data/2026-09-19`, producing:
+
+- `sanity/README.md`: ten full records rendered as JSON for visual inspection.
+- `sanity/sample.jsonl`: five unchanged records per source, with native payloads.
+- `sanity/context.jsonl`: nine supporting ancestors, preserving their original scope.
+- `sanity/selection.json`: selection rules, IDs, corpus checksums, and relationship
+  gaps (none in this selection).
+
+Examples cover stories/topics, comments/replies, explicit replies, a deleted HN
+record, and a Make system event. Selection is deterministic by structural strata
+and ID hash; it does not use topic, intent, or opportunity judgments. These examples
+demonstrate record shapes and body availability, not source prevalence. Missing
+strata in future runs are reported rather than silently substituted.
+
+All four requested outputs now exist: raw corpus, collection summary, repeatable
+acquisition, and raw sanity samples. Both sources, creation timestamps, canonical
+URLs, parent/thread relationships, and coverage limits are retained. No additional
+collection was needed: the existing window is already the requested September 19
+experiment. Original sample/context checksums above remain unchanged. Fourteen
+automated tests pass, including deterministic selection and ancestor preservation.
