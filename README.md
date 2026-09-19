@@ -92,3 +92,5 @@ Primary source references:
 
 See `PROBLEM_FRAMES.md` for the experiment boundary and decisions. The earlier
 ten-record exploratory corpus is not incorporated into this acquisition.
+
+The completed first run is documented in [EXPERIMENT.md](EXPERIMENT.md).
