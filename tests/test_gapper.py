@@ -7,6 +7,7 @@ from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 
 import gapper as g
+import verify
 
 START = datetime(2026, 9, 18, 8, tzinfo=timezone.utc)
 END = START + timedelta(days=1)
@@ -149,6 +150,28 @@ class Collectors(unittest.TestCase):
 
 
 class Archive(unittest.TestCase):
+    def test_export_verifier_detects_corrupted_native_payload(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            client = g.Client(root, 'hacker_news', 1000)
+            native = {'id': 1, 'type': 'story', 'time': START.timestamp(), 'title': 'Fixture'}
+            stream = io.BytesIO(json.dumps(native).encode())
+            stream.status, stream.headers = 200, {}
+            with patch.object(g, 'urlopen', return_value=stream):
+                archived = client.fetch(g.HN + '/item/1.json')
+            record = {'source': 'hacker_news', 'native_id': '1', 'item_type': 'story',
+                      'created_at': START.isoformat(), 'text': '', 'scope': 'sample',
+                      'source_native': native, 'response_ref': archived['response_ref'],
+                      'retrieved_at': archived['retrieved_at'], 'parent_id': None}
+            manifest = {'window': {'start': START.isoformat(), 'end': END.isoformat()}}
+            g.export(root, {'hacker_news': ([record], [], {'stop_reason': 'guard_boundary_reached'})}, manifest)
+            self.assertEqual(verify.verify(root)['integrity_errors'], [])
+            record['source_native'] = dict(native, title='Altered')
+            (root / 'sample.jsonl').write_text(json.dumps(record) + '\n')
+            errors = verify.verify(root)['integrity_errors']
+            self.assertTrue(any('checksum' in e for e in errors))
+            self.assertTrue(any('payload mismatch' in e for e in errors))
+
     def test_success_archive_resumes_without_network(self):
         with tempfile.TemporaryDirectory() as d:
             client = g.Client(d, 'test', 1000)

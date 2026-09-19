@@ -250,6 +250,9 @@ def hn_collect(client, start, end, workers=16, max_ids=60000, max_context=15000)
                     stats["context_failed_ids"].append(i)
             needed.update(frontier & nodes.keys())
             pending = {hn_parent(nodes[i]) for i in frontier if i in nodes and hn_parent(nodes[i])}
+        initial_selected = set(selected)
+        selected.update(i for i in needed if in_window(nodes[i].get("time"), start, end))
+        stats["in_window_discovered_via_context"] = sorted(selected - initial_selected)
         records = []
         for i in sorted(needed):
             p = nodes[i]
@@ -403,7 +406,9 @@ def make_collect(client, start, end, max_pages=100, max_topic_posts=2000):
     selected.update(i for i in needed if in_window(posts[i].get("created_at"), start, end))
     stats["in_window_discovered_via_context"] = sorted(selected - original_selected)
     sample_topics = {posts[i]["topic_id"] for i in selected}
-    needed = {i for i in needed if posts[i]["topic_id"] in sample_topics}
+    # Also retain feed-fetched context for a participating topic if its topic
+    # endpoint failed, so a resolvable parent is not left out of the export.
+    needed = {i for i, p in posts.items() if p["topic_id"] in sample_topics}
     lookup = {(p["topic_id"], p["post_number"]): i for i, p in posts.items()}
     records = []
     for i in sorted(needed):
