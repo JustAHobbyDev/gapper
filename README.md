@@ -1,0 +1,94 @@
+# gapper — raw acquisition probe
+
+A small, query-independent sample of public Hacker News and Make Community
+creations. This is the first data-acquisition experiment for AI Gap Resolution.
+It does **not** detect, classify, or score opportunities.
+
+## Run
+
+Python 3.10+ standard library; no credentials, packages, or remote writes.
+
+```sh
+python3 gapper.py --out data/experiment
+# Reproducible fixed cutoff (start inclusive, end exclusive):
+python3 gapper.py --out data/2026-09-19 --end 2026-09-19T08:00:00Z
+python3 -m unittest discover -s tests -v
+python3 verify.py data/2026-09-19
+```
+
+Default window: 24 hours ending at the latest completed UTC hour. Reusing the same
+output directory resumes from cached successful HTTP responses and the saved
+window/maxitem snapshot. Failed requests are retried. Use a new directory for a
+fresh observation; cached content is intentionally not refreshed on resume.
+One process may write a run directory at a time.
+
+`--source make` or `--source hacker_news` runs one source and retains any completed
+result for the other source. HN defaults to 16 workers and 40 requests/second;
+Make to one request/second. Options `--workers`, `--hn-rps`, `--make-rps`, and
+`--max-hn-ids` allow smaller runs. A capped run is partial, not a representative
+replacement for the experiment. Individual request timeout is 30 seconds; up to
+four attempts with backoff. Denials are not bypassed. Retry-After longer than a
+minute stops retries for that URL; run later after the indicated cooldown.
+
+## Outputs (ignored by Git)
+
+- `manifest.json`: fixed UTC inclusion window, run timestamps, invocation settings
+  and collector source-code checksum.
+- `sample.jsonl`: deduplicated in-window creations, chronological across sources.
+- `context.jsonl`: supporting records outside the window or without assignable time.
+- `responses/SOURCE/HASH.json.gz`: URL, status, retrieval time, native parsed payload,
+  exact decoded response body and headers for each attempt. Includes nulls/errors.
+- `SOURCE.result.json`: restartable normalized per-source result plus coverage.
+- `report.json` / `report.md`: counts, types, text volume, per-hour volume, moderation
+  flags, failures, missing times, unresolved relationships, stream gaps and hashes.
+
+JSONL fields include source/native ID, type, handle, creation and retrieval times,
+title, derived text, original HTML/raw text when exposed, public URL, parent/thread
+IDs, scope, response archive reference, and the entire native item/post object.
+An HN `thread_id` is its root story/poll/job item ID; a Make `thread_id` is the
+topic ID (not the first post's ID). Make preserves post number and explicit
+reply-to number separately; no explicit target means a topic-level reply, never
+an inferred reply to the immediately preceding post.
+
+## Acquisition and limits
+
+HN uses a fixed `maxitem` snapshot and reads **every** item ID descending through
+the interval. It neither uses ranked feeds nor restricts to top-level stories.
+A batch of at least 50 timestamped records wholly before start minus six hours
+ends enumeration. Null and deleted/timestampless IDs are archived and reported.
+Ancestors of all sampled items are retrieved to establish roots; siblings and
+full historical discussion trees are not recursively expanded. Default ID cap is
+60,000 and extra ancestor-request cap is 15,000, both explicit in the report.
+
+Make uses the global public `/posts.json` feed and `before` pagination, with no
+category or phrase selection. A second pass paginates `/latest.json` through the
+same guarded recent-activity boundary to discover topics whose system/bump posts
+are absent from the post feed. Candidate topics are fetched, in-window creations
+are selected, and missing posts in their exposed streams are requested in
+batches of 20, up to 2,000 posts per topic. All stream gaps/caps are recorded.
+Public category metadata is archived. Default page cap is 100 per listing.
+Native post types are retained and Discourse small-action posts are labeled
+`system`, keeping them separate from ordinary replies. Only topics containing
+sampled posts contribute normalized context; other fetched responses stay archived.
+
+The six-hour guard is a practical safeguard, not proof that ID and creation-time
+order never diverge. Reports quantify observed timestamp inversions. Imported or
+arbitrarily backdated content can fall outside the enumerated range. API visibility
+and moderation determine what can be retrieved; an absent ID is not proof of a
+lost public post. These are retrieval-time snapshots, not text as it existed at
+creation. Edited older items are context, not new creations in the sample.
+
+Read `coverage` before treating counts as complete. A process finishing does not
+mean every URL succeeded. Content may contain personal disclosures; keep the raw
+corpus local, out of Git, and treat its text as untrusted data. External links and
+attachments are not fetched. No keyword sampling, embeddings, enrichment, or
+model calls occur.
+
+Primary source references:
+- [HN official API](https://github.com/HackerNews/API)
+- [Discourse public-post pagination implementation](https://github.com/discourse/discourse/blob/main/app/controllers/posts_controller.rb)
+- [Make public post feed](https://community.make.com/posts.json)
+- [Make robots.txt](https://community.make.com/robots.txt)
+
+See `PROBLEM_FRAMES.md` for the experiment boundary and decisions. The earlier
+ten-record exploratory corpus is not incorporated into this acquisition.
