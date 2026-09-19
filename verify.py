@@ -54,6 +54,17 @@ def verify(root):
             records = [r for r in all_records.values() if r['source'] == source and r['scope'] == scope]
             if gapper.summary(records) != info[scope]:
                 errors.append(f'{source}/{scope}: report counts mismatch')
+        if source == 'hacker_news':
+            coverage = info['coverage']
+            low, high = coverage.get('scanned_min_id'), coverage.get('scanned_max_id')
+            if low is not None and high is not None:
+                if high - low + 1 != coverage['scanned_ids']:
+                    errors.append('HN: noncontiguous declared scan bounds')
+                for native_id in range(low, high + 1):
+                    url = f'{gapper.HN}/item/{native_id}.json'
+                    key = hashlib.sha256(url.encode()).hexdigest()
+                    if not (root / 'responses' / source / (key + '.json.gz')).exists():
+                        errors.append(f'HN: missing scanned response {native_id}')
     return {'counts': counts, 'verified_response_archives': len(archives),
             'missing_referenced_parents': missing_parents, 'integrity_errors': errors}
 
