@@ -5,6 +5,7 @@ import unittest
 
 import blind_review as br
 import pilot
+import review_ui
 from test_pilot import record
 
 
@@ -31,6 +32,8 @@ class BlindReviewTests(unittest.TestCase):
         self.provenance = self.base / 'provenance.json'
         self.provenance.write_text(json.dumps({'model': 'test-only'}))
         self.human = dict(self.ai, reviewer_id='human', reviewer_kind='human_independent', thread_label='unknown')
+        self.human['review_burden'] = dict(review_ui.burden_template(br.packet(self.root, self.pid)['primary_region']),
+            extra_context_opened=False, context_sufficiency='sufficient', review_scope='primary_only')
         self.form = self.base / 'human.json'
         self.form.write_text(json.dumps(self.human))
 
@@ -90,6 +93,47 @@ class BlindReviewTests(unittest.TestCase):
         (self.root / 'reviewer/records.jsonl').write_text('changed')
         with self.assertRaisesRegex(ValueError, 'source changed'):
             br.commit(self.root, self.form, 'none')
+
+    def test_split_hidden_everywhere_in_reviewer_bundle(self):
+        for path in (self.root / 'reviewer').rglob('*'):
+            if path.is_file():
+                for term in ['calibration', 'held_out', 'source_transfer']:
+                    self.assertNotIn(term, path.read_text(), str(path))
+        manifest = br.verify(self.root)
+        self.assertEqual(manifest['experiment_assignments'][self.pid], self.p['split'])
+
+    def test_insufficient_evidence_and_burden_required(self):
+        self.human['thread_label'] = 'insufficient_evidence'
+        self.form.write_text(json.dumps(self.human))
+        br.commit(self.root, self.form, 'none')
+        saved = json.loads((self.root / 'commits' / (self.pid + '.json')).read_text())
+        self.assertEqual(saved['annotation']['thread_label'], 'insufficient_evidence')
+        invalid = dict(self.human)
+        invalid.pop('review_burden')
+        self.form.write_text(json.dumps(invalid))
+        with self.assertRaisesRegex(ValueError, 'burden is required'):
+            br.commit(self.root, self.form, 'none')
+
+    def test_upgrade_refuses_uncommitted_review_notes(self):
+        path = self.root / 'reviewer/forms' / (self.pid + '.json')
+        row = json.loads(path.read_text())
+        row['coverage_notes'] = ['human draft note']
+        path.write_text(json.dumps(row))
+        with self.assertRaisesRegex(ValueError, 'Human review work exists'):
+            br.upgrade(self.prepared, self.root, self.base / 'refuse')
+        self.assertEqual(json.loads(path.read_text())['coverage_notes'], ['human draft note'])
+
+    def test_upgrade_preserves_seals_without_exposing_ai(self):
+        br.seal_ai(self.root, self.ai_file, self.provenance)
+        target = self.base / 'next'
+        br.upgrade(self.prepared, self.root, target)
+        self.assertEqual((self.root / 'private/ai' / (self.pid + '.json')).read_bytes(),
+                         (target / 'private/ai' / (self.pid + '.json')).read_bytes())
+        with self.assertRaisesRegex(ValueError, 'Commit the human'):
+            br.reveal(target, self.pid)
+        br.commit(self.root, self.form, 'none')
+        with self.assertRaisesRegex(ValueError, 'Existing human commitments'):
+            br.upgrade(self.prepared, self.root, self.base / 'refuse')
 
 
 if __name__ == '__main__':

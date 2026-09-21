@@ -10,6 +10,7 @@ import shutil
 import tempfile
 
 import pilot
+import review_ui
 
 
 def now():
@@ -43,6 +44,8 @@ def verify(root):
     for name, expected in manifest['source_files'].items():
         if pilot.digest((root / 'reviewer' / name).read_bytes()) != expected:
             raise ValueError(f'Reviewer source changed: {name}')
+    if 'experiment_packets_sha256' in manifest and pilot.digest((root / 'private/experiment_packets.jsonl').read_bytes()) != manifest['experiment_packets_sha256']:
+        raise ValueError('Experiment assignments changed')
     return manifest
 
 
@@ -55,28 +58,56 @@ def initialize(pilot_dir, root):
     root.mkdir(parents=True, exist_ok=False)
     reviewer = root / 'reviewer'
     reviewer.mkdir()
-    # Explicit allowlist: never copy AI drafts, summaries, or draft-selection files.
-    for name in ['packets', 'records.jsonl', 'packets.jsonl', 'annotation_template.jsonl', 'index.html']:
-        src, dst = pilot_dir / name, reviewer / name
-        shutil.copytree(src, dst) if src.is_dir() else shutil.copyfile(src, dst)
+    # Regenerate only source-derived UI, never copy AI material or split metadata.
+    experiment_packets = review_ui.build(pilot_dir, reviewer)
     forms = reviewer / 'forms'
-    forms.mkdir()
-    for row in pilot.read_jsonl(reviewer / 'annotation_template.jsonl'):
-        save_new(forms / (row['packet_id'] + '.json'), row)
-    shutil.copyfile(Path(__file__).parent / 'research/BLIND_REVIEW.md', reviewer / 'README.md')
-    # The schema guide has no corpus examples or AI judgments.
-    shutil.copyfile(Path(__file__).parent / 'research/ANNOTATION_GUIDE.md', reviewer / 'ANNOTATION_GUIDE.md')
+    shutil.copyfile(Path(__file__).parent / 'research/HUMAN_REVIEW.md', reviewer / 'README.md')
+    shutil.copyfile(Path(__file__).parent / 'research/HUMAN_REVIEW.md', reviewer / 'ANNOTATION_GUIDE.md')
     for name in ['private/ai', 'private/legacy', 'commits', 'comparisons', 'adjudications']:
         (root / name).mkdir(parents=True)
+    pilot.write_jsonl(root / 'private/experiment_packets.jsonl', experiment_packets)
     files = {str(p.relative_to(reviewer)): pilot.digest(p.read_bytes())
              for p in reviewer.rglob('*') if p.is_file() and forms not in p.parents}
-    manifest = {'protocol': 'blind-review-v1', 'created_at': now(),
+    manifest = {'protocol': 'blind-review-v2', 'created_at': now(),
                 'pilot_manifest_sha256': pilot.digest((pilot_dir / 'manifest.json').read_bytes()),
+                'experiment_assignments': {p['packet_id']: p['split'] for p in experiment_packets},
+                'experiment_packets_sha256': pilot.digest((root / 'private/experiment_packets.jsonl').read_bytes()),
+                'selector': {'policy': review_ui.POLICY, 'max_records': review_ui.MAX_RECORDS,
+                             'max_source_characters': review_ui.MAX_CHARACTERS},
                 'source_files': files, 'reference_status': 'single_reviewer_exploratory',
                 'human_inter_annotator_agreement': 'not_established',
                 'blinding': 'workflow separation, not an OS access-control boundary'}
     save_new(root / 'manifest.json', manifest)
     return {'reviewer_bundle': str(reviewer), 'packets': len(list(forms.iterdir()))}
+
+
+def upgrade(pilot_dir, previous_root, root):
+    """Create a fresh presentation version; never overwrite prior review work."""
+    previous_root, root = Path(previous_root), Path(root)
+    with lock(previous_root):
+        old = verify(previous_root)
+        if any((previous_root / 'commits').iterdir()):
+            raise ValueError('Existing human commitments require a separate experiment, not migration')
+        if old['pilot_manifest_sha256'] != pilot.digest((Path(pilot_dir) / 'manifest.json').read_bytes()):
+            raise ValueError('Migration must use the same frozen pilot')
+        blanks = {r['packet_id']: r for r in pilot.read_jsonl(previous_root / 'reviewer/annotation_template.jsonl')}
+        for form in (previous_root / 'reviewer/forms').glob('*.json'):
+            row = json.loads(form.read_text())
+            if row != blanks.get(form.stem):
+                raise ValueError('Human review work exists; preserve it in a separate experiment')
+        result = initialize(pilot_dir, root)
+        seals = {}
+        for src in (previous_root / 'private/ai').glob('*.json'):
+            row = json.loads(src.read_text())['annotation']
+            checked_annotation(root, row, 'ai_provisional')
+            shutil.copyfile(src, root / 'private/ai' / src.name)
+            seals[src.name] = pilot.digest(src.read_bytes())
+        save_new(root / 'private/migration.json', {
+            'previous_manifest_sha256': pilot.digest((previous_root / 'manifest.json').read_bytes()),
+            'sealed_ai_sha256': seals, 'human_labels_migrated': 0,
+            'ai_context': 'Original full-retained-thread drafts, not bounded-region model runs',
+            'created_at': now()})
+        return dict(result, preserved_ai_seals=len(seals))
 
 
 def checked_annotation(root, row, kind):
@@ -89,7 +120,9 @@ def checked_annotation(root, row, kind):
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / 'row.jsonl'
         pilot.write_jsonl(path, [row])
-        result = pilot.validate(root / 'reviewer', path)
+        result = pilot.validate(root / 'reviewer', path,
+                                packet_metadata=root / 'private/experiment_packets.jsonl'
+                                if (root / 'private/experiment_packets.jsonl').exists() else None)
     if not result['valid']:
         raise ValueError('; '.join(result['errors']))
 
@@ -127,6 +160,8 @@ def commit(root, annotation, exposure):
         kind = 'human_assisted' if exposure == 'ai_annotation' else 'human_independent'
         checked_annotation(root, row, kind)
         pid = row['packet_id']
+        if verify(root)['protocol'] == 'blind-review-v2':
+            review_ui.validate_burden(row, packet(root, pid))
         if (root / 'comparisons' / (pid + '.json')).exists():
             raise ValueError('Comparison already revealed; initial label cannot be recommitted')
         ai = root / 'private/ai' / (pid + '.json')
@@ -208,13 +243,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('init'); p.add_argument('pilot_dir'); p.add_argument('root')
+    p = sub.add_parser('upgrade'); p.add_argument('pilot_dir'); p.add_argument('previous_root'); p.add_argument('root')
     p = sub.add_parser('seal-ai'); p.add_argument('root'); p.add_argument('annotations'); p.add_argument('provenance')
     p = sub.add_parser('commit'); p.add_argument('root'); p.add_argument('annotation')
     p.add_argument('--exposure', required=True, choices=['none', 'prior_summary', 'ai_annotation'])
     p = sub.add_parser('reveal'); p.add_argument('root'); p.add_argument('pid')
     p = sub.add_parser('adjudicate'); p.add_argument('root'); p.add_argument('pid'); p.add_argument('decision')
     args = vars(parser.parse_args()); command = args.pop('command')
-    function = {'init': initialize, 'seal-ai': seal_ai, 'commit': commit, 'reveal': reveal, 'adjudicate': adjudicate}[command]
+    function = {'init': initialize, 'upgrade': upgrade, 'seal-ai': seal_ai, 'commit': commit, 'reveal': reveal, 'adjudicate': adjudicate}[command]
     try:
         print(json.dumps(function(**args), ensure_ascii=False, indent=2))
     except (ValueError, OSError, KeyError, TypeError) as exc:

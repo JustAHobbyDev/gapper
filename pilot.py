@@ -248,9 +248,9 @@ def prepare(run, out=None, hn_count=120):
     return manifest
 
 
-def validate(out, annotations):
+def validate(out, annotations, packet_metadata=None):
     out = Path(out)
-    packets = {p['packet_id']: p for p in read_jsonl(out / 'packets.jsonl')}
+    packets = {p['packet_id']: p for p in read_jsonl(packet_metadata or out / 'packets.jsonl')}
     records = {(r['source'], r['native_id']): r for r in read_jsonl(out / 'records.jsonl')}
     errors, seen, completed, kinds = [], set(), Counter(), Counter()
     for row in read_jsonl(annotations):
@@ -270,13 +270,13 @@ def validate(out, annotations):
         kind = row.get('reviewer_kind')
         if not row.get('reviewer_id') or kind not in {'human_independent', 'human_assisted', 'ai_provisional'}:
             errors.append(f'{pid}: missing/invalid reviewer provenance')
-        if kind == 'ai_provisional' and p['split'] != 'calibration':
+        if kind == 'ai_provisional' and p.get('split') != 'calibration':
             errors.append(f'{pid}: AI draft outside calibration split')
         label = row.get('thread_label')
         episodes = row.get('episodes', [])
-        if label not in {'has_candidate', 'no_candidate', 'unknown'}:
+        if label not in {'has_candidate', 'no_candidate', 'unknown', 'insufficient_evidence'}:
             errors.append(f'{pid}: invalid thread label')
-        if label == 'has_candidate' and not episodes or label == 'no_candidate' and episodes:
+        if label == 'has_candidate' and not episodes or label in {'no_candidate', 'insufficient_evidence'} and episodes:
             errors.append(f'{pid}: label/episode mismatch')
         episode_ids = set()
         for e in episodes:
@@ -317,7 +317,7 @@ def validate(out, annotations):
                 if c.get('field') not in {'actor', 'task', 'input', 'output', 'step', 'system', 'pain', 'burden', 'workaround', 'ai_attempt', 'failure', 'constraint', 'solution', 'feasibility', 'buying', 'resolution'} or not c.get('summary'):
                     errors.append(f'{pid}: missing/invalid claim field or summary')
         if len(errors) == before:
-            completed[p['split']] += 1
+            completed[p.get('split', 'blinded')] += 1
             kinds[kind] += 1
     return {'errors': errors, 'valid': not errors, 'completed_by_split': dict(completed),
             'reviewer_kinds': dict(kinds), 'total_packets': len(packets),

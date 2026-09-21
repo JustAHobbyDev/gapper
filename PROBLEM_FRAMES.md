@@ -205,3 +205,68 @@ or human inter-annotator agreement. The gate prevents accidental workflow leaks;
 it does not assert OS-level secrecy or undo earlier exposure. AI results for a
 blind pair must be sealed before the human commitment. No human label is generated
 or committed by the agent on the user's behalf.
+
+## Entry #3 — 2026-09-21 — Bounded human context and review burden
+
+### Domains
+
+Frozen source records and experiment assignments are lexical, operator-owned
+inputs. The source-only reviewer bundle and context policy are derived workpieces.
+The human reviewer is biddable; the browser reports expansion events and visible
+elapsed time, not attention or comprehension. Human labels, AI seals and later
+adjudications remain separate lexical records. No source network calls are added.
+
+### Frame split
+
+Transformation selects an ancestry-preserving structural neighborhood from a
+retained thread. Information Display shows that region and expandable context.
+Simple Workpieces collects human labels and burden measurements. Commanded
+Behaviour preserves the existing commitment-before-AI-reveal gate.
+
+### Requirements (per frame, with explicit out-of-scope)
+
+The reviewer sees bounded initial source text without experimental assignments
+or AI labels; every retained source record remains accessible. Tiny/bodyless
+packets remain reviewable with an explicit insufficient-evidence outcome.
+Expansion, initial source size, review scope and approximate time accompany the
+committed label. No claim of complete thread review from a bounded region, no
+proof of actual reading, no automatic semantic relevance guarantee or accuracy
+claim, and no modification to acquisition or production detection.
+
+### Invariance test
+
+Pass for immutable source snapshots, deterministic selection and frozen counts.
+Browser visibility and expansion are observable but attention is not: reject
+interpreting elapsed time as actual labor or expansion as proof of insufficiency.
+Collect a separate human sufficiency assessment and optional actual minutes.
+
+### Stakeholder test
+
+The stakeholder is a human reviewing source evidence, not a model consuming a
+fixed token window. Retain available ancestry and attribution connectors; allow
+explicit expansion and uncertainty rather than forcing a bounded negative label.
+No external product analogy is used.
+
+### Open questions — decided here, with reasoning
+
+Use a provisional 24-record / 16,000-source-character initial budget. Choose an
+eligible in-window anchor by stable hash, preferring non-root anchors; retain its
+root and complete available ancestry. Add graph-near records with full ancestry
+closure, using hash tie-breaking, until the record budget prevents additions.
+Overlong ancestry candidates are skipped as initial anchors and counted; their
+records remain secondary. Long bodies are visibly clipped under a fair character
+budget and expandable. This tests a structural baseline, not semantic selection.
+
+Hide split and sampling metadata throughout the reviewer bundle; preserve exact
+assignments in the operator manifest and private experiment metadata. Version the
+presentation without resampling, rewriting source data, or replacing AI seals.
+Reject migration after commitments; do not overwrite old forms. Save browser
+history best-effort and include measurements in downloaded labels; manual review
+must disclose expansion and scope. Insufficient evidence is not a negative.
+
+### Carried forward
+
+Compare human sufficiency judgments, expansion and review time by region size;
+partial-region judgments are not exhaustive thread references. Existing sealed
+AI drafts used full retained context and cannot measure bounded-context model
+accuracy. Human/AI disagreements and context differences require explicit review.

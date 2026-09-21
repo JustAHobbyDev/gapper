@@ -117,3 +117,5 @@ The complete original requirements are in
 Independent labeling uses the [source-only review workflow](research/BLIND_REVIEW.md):
 commit the human interpretation first, reveal its sealed AI annotation second,
 and preserve disagreements in a separate adjudication record.
+
+Human annotation now uses the [bounded, split-blind review bundle](data/2026-09-19/research/blind-review-v2/reviewer/index.html). See [review instructions](research/HUMAN_REVIEW.md) for expansion tracking, insufficient evidence, and label commitment.

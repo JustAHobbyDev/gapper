@@ -98,3 +98,30 @@ only `reviewer/` to a reviewer, never the entire operator workspace. Previously
 published AI summaries cannot be made unseen; disclose exposure when applicable.
 Original frozen pilot artifacts remain unchanged. This workflow has its own
 manifest binding the source bundle and instructions.
+
+## Bounded review presentation (v2)
+
+New bundles hide split and sampling assignments throughout `reviewer/`; the
+operator manifest and `private/experiment_packets.jsonl` retain them. The packet
+page offers a bounded structural region, expandable secondary records and clipped
+text, a label form and a downloadable JSON with burden measurements. See
+[human instructions](HUMAN_REVIEW.md). The primary budget is 24 records and 16,000
+source Unicode characters, with token estimates explicitly approximate.
+
+Use the downloaded JSON with `commit`. V2 requires initial frozen counts,
+expansion disclosure, primary-context sufficiency and review scope. Visible-page
+time can be null for manual review. Browser time includes foreground idle time;
+expansion is exposure, not proof of reading or evidence sufficiency. A negative
+with partial coverage is not a whole-thread negative. `insufficient_evidence` is
+a distinct outcome with no reconstructed episodes, never a negative reference.
+
+Before any labels are committed, migrate a frozen pilot and existing seals:
+
+```sh
+python3 blind_review.py upgrade PILOT_DIRECTORY OLD_REVIEW_ROOT NEW_REVIEW_ROOT
+```
+
+This creates a new bundle, preserves original AI seal bytes, records provenance,
+and leaves the prior workspace intact. Existing full-thread AI drafts differ in
+context from the bounded human display; that comparison is exploratory, not a
+controlled model context ablation. The user must switch to the new review index.

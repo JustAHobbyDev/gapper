@@ -21,7 +21,7 @@ python3 pilot.py validate data/2026-09-19/research/context-pilot-v1 \
 python3 -m unittest discover -s tests -v
 ```
 
-Start with the isolated [source-only review index](data/2026-09-19/research/blind-review-v1/reviewer/index.html).
+Start with the isolated [source-only review index](data/2026-09-19/research/blind-review-v2/reviewer/index.html).
 It contains all 137 packets, blank per-packet forms, and annotation instructions.
 AI annotations, exploratory summaries, and selection details live separately in
 operator storage. The previous ungated AI-view page now displays only a notice.
@@ -144,3 +144,49 @@ match the acquisition report. No production detector or collector was modified.
 Five additional blind-review tests check source-only export, refusal of early
 reveal, write-once human/AI/adjudication records, persisted disagreements, source
 integrity, exposure disclosure, and rejection of retrospective blind pairs.
+
+## 2026-09-21 presentation revision: bounded independent review
+
+Use [the v2 review index](data/2026-09-19/research/blind-review-v2/reviewer/index.html)
+for initial labels. The original packet selection and experiment assignments are
+unchanged. Assignments and sampling strata are absent from the entire reviewer
+bundle and preserved in its operator manifest/private experiment metadata.
+
+All 137 packets remain, including tiny, bodyless and marker-only evidence.
+`insufficient_evidence` is now a top-level no-reconstructable-episode outcome,
+distinct from a supported negative and from interpretive uncertainty. The form
+records review scope; a bounded-region negative is not a whole-thread negative.
+
+Primary regions use a deterministic structural neighborhood with root, selected
+anchor, complete available ancestry and connector closure for additional replies.
+The provisional budget is 24 records / 16,000 source Unicode characters; long
+records can be explicitly clipped with full-text expansion. Selection has not
+been validated for semantic relevance. This human presentation policy is separate
+from the frozen B0–B5 model input definitions and is not a completed B4 experiment.
+
+In this bundle, 58 packets have secondary records and four have clipped primary
+text. Initial source text totals 736,176 characters across the 137 packets, versus
+2,122,979 retained characters. The largest retained thread has 782 records and
+256,264 characters; its primary region has 24 records and 10,761 characters.
+These are presentation counts, not measured human effort or detection results.
+
+The offline page exports initial record/character counts, approximate tokens,
+expansion history, explicit context sufficiency, review scope and visible-page
+seconds with the label JSON. Browser history is best effort; downloads preserve
+it for commitment. Visible time includes foreground idle time and is not verified
+reading time. Actual minutes can be supplied manually; unknown time stays null.
+Opening context does not by itself establish that the selector missed evidence.
+Report expansion rates alongside sufficiency judgments, episode evidence outside
+the primary region and partial-coverage rates. Exhaustive thread recall requires
+separate full-coverage references, not automatic negative labels for unseen text.
+
+The seven original AI seals were copied byte-for-byte to separate private storage.
+They used full retained context and must not be interpreted as fresh bounded-region
+model outputs. Human commitment still precedes reveal; originals and disagreements
+remain separate. No human label was generated during this revision.
+
+Validation: 42 Python tests pass; `node tests/review_browser_events.cjs` exercises
+expansion persistence, reloads, hidden-tab timing, download metadata and coverage
+checks in a minimal DOM harness. This is not a visual browser rendering test.
+Source files and frozen experiment inputs were preserved. The prior review bundle
+remains an archive; use only v2 for this annotation pass.

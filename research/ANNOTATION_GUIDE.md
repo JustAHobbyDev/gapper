@@ -168,3 +168,12 @@ Compare source and structural strata separately. Bootstrap paired differences by
 root. Predeclare acceptable precision and unsupported-claim limits before seeing
 held-out outputs. If positives are too few, report inconclusive results. The pilot
 is one day of public retrieval-time snapshots, not representative market demand.
+
+## Bounded human presentation
+
+The operator rubric above describes the original full-thread protocol. Human v2
+packets use [separate reviewer instructions](HUMAN_REVIEW.md) with no experimental
+assignments. `insufficient_evidence` is now an explicit top-level outcome (empty
+episodes), distinct from `no_candidate` and `unknown`. The required review burden
+records initial size, expansion, context sufficiency and coverage; a partial-region
+negative is not an exhaustive thread label. Use the v2 index for human labeling.
