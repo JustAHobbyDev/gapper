@@ -493,7 +493,10 @@ function setOutcome(v) { S.draft.thread_label = v; changed(); renderPanel(); }
 function editPanel() {
   const d = S.draft, revising = S.view.commits.length > 0;
   const authors = [...new Set(S.view.records.map(r => r.author).filter(Boolean))];
-  const out = [h('datalist', {id: 'authors'}, authors.slice(0, 400).map(a => h('option', {value: a})), h('option', {value: 'unresolved'}))];
+  const out = [h('datalist', {id: 'authors'}, authors.slice(0, 400).map(a => h('option', {value: a})), h('option', {value: 'unresolved'})),
+    h('div', {class: 'commit-bar'}, h('span', {id: 'save-state', class: 'muted small'}, S.dirty ? 'Saving…' : S.savedAt ? 'Draft saved ' + new Date(S.savedAt).toLocaleTimeString() : 'Nothing to save yet'),
+      twoStep('commit', revising ? 'Commit revision' : 'Commit human review', 'Confirm: commit as immutable record', commitReview, {title: 'Ctrl+Enter'})),
+    S.errors.length > 0 && h('ul', {class: 'error', role: 'alert'}, S.errors.map(e => h('li', null, e)))];
   if (revising) out.push(h('div', {class: 'notice'}, h('strong', null, `Revising committed review (revision ${S.view.commits.length} stays unchanged). `),
     S.view.comparison.revealed ? 'The AI annotation has been revealed, so this revision is recorded as AI-assisted. ' : '',
     field('Reason for revision', input(d, 'revision_note', {placeholder: 'What changed and why'})),
@@ -512,10 +515,7 @@ function editPanel() {
   out.push(h('h2', null, 'Context'),
     h('p', {class: 'muted small'}, 'Was the initially shown region enough for your judgment?'),
     segmented(d.context_sufficiency, SUFFICIENCY, v => { d.context_sufficiency = v; changed(); renderPanel(); }),
-    field('Coverage notes', area(d, 'coverage_notes', {placeholder: 'Optional. One note per line, e.g. context read outside this app.'}), 'optional'),
-    S.errors.length > 0 && h('ul', {class: 'error', role: 'alert'}, S.errors.map(e => h('li', null, e))),
-    h('div', {class: 'commit-bar'}, h('span', {id: 'save-state', class: 'muted small'}, S.dirty ? 'Saving…' : S.savedAt ? 'Draft saved ' + new Date(S.savedAt).toLocaleTimeString() : 'Nothing to save yet'),
-      twoStep('commit', revising ? 'Commit revision' : 'Commit human review', 'Confirm: commit as immutable record', commitReview, {title: 'Ctrl+Enter'})));
+    field('Coverage notes', area(d, 'coverage_notes', {placeholder: 'Optional. One note per line, e.g. context read outside this app.'}), 'optional'));
   return out;
 }
 function episodeCard(e, i) {
@@ -583,7 +583,7 @@ async function commitReview() {
     S.errors = []; S.confirm = null; adoptView();
     S.state = await api('GET', '/api/state');
     renderTop(); renderPacket(); toast('Human review committed and exported.');
-  } catch (e) { S.errors = e.errors && e.errors.length ? e.errors : [e.message]; S.confirm = null; renderPanel(); }
+  } catch (e) { S.errors = e.errors && e.errors.length ? e.errors : [e.message]; S.confirm = null; renderPanel(); $('#panel').scrollTop = 0; }
 }
 
 /* ---------- committed (read-only) ---------- */
@@ -613,19 +613,19 @@ function episodeSummary(e, i, side, pair) {
 function committedPanel() {
   const commits = S.view.commits, last = commits[commits.length - 1], a = last.annotation, b = a.review_burden, cmp = S.view.comparison;
   const act = async (path, after) => { try { const r = await api('POST', `/api/packets/${encodeURIComponent(S.pid)}/${path}`); after(r); } catch (e) { S.confirm = null; toast(e.message); renderPanel(); } };
-  return [h('div', {class: 'notice ok'}, h('strong', null, `Human review committed — revision ${last.revision}`), h('br'),
+  return [h('div', {class: 'commit-bar'},
+      h('button', {class: 'btn', onclick: () => act('revise', r => { S.view = r; adoptView(); renderPacket(); })}, `Revise (creates revision ${last.revision + 1})`),
+      cmp.revealed ? h('a', {class: 'btn primary', href: `#/p/${encodeURIComponent(S.pid)}/compare`}, 'Open AI comparison')
+        : cmp.available ? twoStep('reveal', 'Compare with AI annotation', 'Confirm: reveal AI (later revisions become AI-assisted)', () => act('reveal', () => go(`#/p/${encodeURIComponent(S.pid)}/compare`)))
+          : h('span', {class: 'muted small'}, 'No AI annotation was sealed for this packet.'),
+      h('button', {class: 'btn', onclick: () => neighbor(1)}, 'Next packet →')),
+    h('div', {class: 'notice ok'}, h('strong', null, `Human review committed — revision ${last.revision}`), h('br'),
       `${when(last.committed_at)} · ${a.reviewer_id} · ${a.reviewer_kind.replace('_', ' ')}`),
     h('h2', null, 'Outcome'), h('p', null, h('b', null, label(OUTCOMES, a.thread_label))),
     a.episodes.map((e, i) => episodeSummary(e, i, 'human')),
     h('p', {class: 'small muted'}, `Context: ${label(SUFFICIENCY, b.context_sufficiency)} · scope ${b.review_scope.replace('_', ' ')} · extra context ${b.extra_context_opened ? `opened (${b.expanded_record_ids.length} records viewed)` : 'not opened'} · active ${Math.round(b.active_seconds / 6) / 10} min`),
     a.coverage_notes.length > 0 && h('p', {class: 'small'}, 'Coverage notes: ', a.coverage_notes.join(' · ')),
-    commits.length > 1 && h('details', null, h('summary', null, `Revision history (${commits.length})`), h('ul', {class: 'small'}, commits.map(c => h('li', null, `r${c.revision} · ${when(c.committed_at)} · ${label(OUTCOMES, c.annotation.thread_label)} · ${c.annotation.episodes.length} episodes${c.revision_note ? ' — ' + c.revision_note : ''}`)))),
-    h('div', {class: 'commit-bar'},
-      h('button', {class: 'btn', onclick: () => act('revise', r => { S.view = r; adoptView(); renderPacket(); })}, `Revise (creates revision ${last.revision + 1})`),
-      cmp.revealed ? h('a', {class: 'btn primary', href: `#/p/${encodeURIComponent(S.pid)}/compare`}, 'Open AI comparison')
-        : cmp.available ? twoStep('reveal', 'Compare with AI annotation', 'Confirm: reveal AI (later revisions become AI-assisted)', () => act('reveal', () => go(`#/p/${encodeURIComponent(S.pid)}/compare`)))
-          : h('span', {class: 'muted small'}, 'No AI annotation was sealed for this packet.'),
-      h('button', {class: 'btn', onclick: () => neighbor(1)}, 'Next packet →'))];
+    commits.length > 1 && h('details', null, h('summary', null, `Revision history (${commits.length})`), h('ul', {class: 'small'}, commits.map(c => h('li', null, `r${c.revision} · ${when(c.committed_at)} · ${label(OUTCOMES, c.annotation.thread_label)} · ${c.annotation.episodes.length} episodes${c.revision_note ? ' — ' + c.revision_note : ''}`))))];
 }
 
 /* ---------- comparison and adjudication ---------- */
@@ -658,6 +658,14 @@ function comparePanel() {
       segmented(adj.thread_label.decision, DECISIONS, v => { adj.thread_label.decision = v; renderPanel(); }),
       adj.thread_label.decision === 'merged' && h('select', {onchange: e => { adj.thread_label.value = e.target.value; }}, h('option', {value: ''}, 'Adjudicated outcome…'), OUTCOMES.map(([v, t]) => h('option', {value: v, selected: adj.thread_label.value === v}, t))),
       h('input', {placeholder: 'Rationale', value: adj.thread_label.rationale, oninput: e => { adj.thread_label.rationale = e.target.value; }}))];
+  out.splice(0, 0, h('div', {class: 'commit-bar'}, twoStep('adjudicate', latest ? 'Record new adjudication version' : 'Record adjudication', 'Confirm: record adjudication', async () => {
+      try {
+        const clean = r => r.decision === 'merged' ? r : {...r, merged: undefined};
+        S.compare = await api('POST', `/api/packets/${encodeURIComponent(S.pid)}/adjudicate`, {...adj, episodes: adj.episodes.map(clean)});
+        S.errors = []; S.confirm = null; S.view.status = 'adjudicated'; renderPacket(); toast('Adjudication recorded and exported. Originals unchanged.');
+      } catch (e) { S.errors = e.errors && e.errors.length ? e.errors : [e.message]; S.confirm = null; renderPanel(); $('#panel').scrollTop = 0; }
+    })),
+    S.errors.length > 0 && h('ul', {class: 'error', role: 'alert'}, S.errors.map(e => h('li', null, e))));
   adj.episodes.forEach(row => {
     const hh = he.get(row.human_episode_id), aa = ae.get(row.ai_episode_id), pair = pairOf(row);
     const kind = hh && aa ? (pair.classification_disagrees || pair.evidence_disagrees ? 'Matched — with differences' : 'Matched — labels and evidence records agree') : hh ? 'Human-only episode' : 'AI-only episode';
@@ -677,15 +685,7 @@ function comparePanel() {
   if (!adj.episodes.length) out.push(h('p', {class: 'muted'}, 'Neither side recorded an episode.'));
   out.push(h('h2', null, 'Adjudication'),
     latest && h('div', {class: 'notice ok'}, `Adjudication v${latest.version} recorded ${when(latest.recorded_at)}: ${latest.decision.rationale} `, h('span', {class: 'muted'}, 'Recording again adds a new version; earlier ones are kept.')),
-    field('Overall rationale', h('textarea', {rows: 2, value: adj.rationale, oninput: e => { adj.rationale = e.target.value; }})),
-    S.errors.length > 0 && h('ul', {class: 'error', role: 'alert'}, S.errors.map(e => h('li', null, e))),
-    h('div', {class: 'commit-bar'}, twoStep('adjudicate', latest ? 'Record new adjudication version' : 'Record adjudication', 'Confirm: record adjudication', async () => {
-      try {
-        const clean = r => r.decision === 'merged' ? r : {...r, merged: undefined};
-        S.compare = await api('POST', `/api/packets/${encodeURIComponent(S.pid)}/adjudicate`, {...adj, episodes: adj.episodes.map(clean)});
-        S.errors = []; S.confirm = null; S.view.status = 'adjudicated'; renderPacket(); toast('Adjudication recorded and exported. Originals unchanged.');
-      } catch (e) { S.errors = e.errors && e.errors.length ? e.errors : [e.message]; S.confirm = null; renderPanel(); }
-    })));
+    field('Overall rationale', h('textarea', {rows: 2, value: adj.rationale, oninput: e => { adj.rationale = e.target.value; }})));
   return out;
 }
 
