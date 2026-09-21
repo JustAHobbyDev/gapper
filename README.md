@@ -119,3 +119,5 @@ commit the human interpretation first, reveal its sealed AI annotation second,
 and preserve disagreements in a separate adjudication record.
 
 Human annotation now uses the [bounded, split-blind review bundle](data/2026-09-19/research/blind-review-v2/reviewer/index.html). See [review instructions](research/HUMAN_REVIEW.md) for expansion tracking, insufficient evidence, and label commitment.
+
+Review packets with the local app: `python3 review_app.py` (no JSON editing; autosave, immutable commits, gated AI comparison, adjudication and automatic exports). See [research/REVIEW_APP.md](research/REVIEW_APP.md). It supersedes the static per-packet pages and manual CLI commit for this pilot.

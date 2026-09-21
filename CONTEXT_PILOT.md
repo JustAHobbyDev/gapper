@@ -190,3 +190,14 @@ expansion persistence, reloads, hidden-tab timing, download metadata and coverag
 checks in a minimal DOM harness. This is not a visual browser rendering test.
 Source files and frozen experiment inputs were preserved. The prior review bundle
 remains an archive; use only v2 for this annotation pass.
+
+## 2026-09-21 review instrument
+
+Human annotation now runs through `python3 review_app.py`
+([instructions](research/REVIEW_APP.md)) against the unchanged v2 review root:
+same packets, primary regions, sealed AI results and hidden assignments. Labels,
+revisions, reveals, adjudications and burden telemetry live in
+`blind-review-v2/app/review.sqlite3` and are exported as deterministic JSON to
+`blind-review-v2/app/exports/`. `pilot.py validate` additionally accepts claim
+polarities `corrects` and `supersedes`. 53 Python tests pass. No human label,
+reveal or adjudication was recorded in the real root while building it.

@@ -312,7 +312,7 @@ def validate(out, annotations, packet_metadata=None):
                     errors.append(f'{pid}: invalid span bounds')
                 if c.get('basis') not in {'firsthand_report', 'secondhand_report', 'suggestion', 'question', 'hypothetical'}:
                     errors.append(f'{pid}: invalid claim basis')
-                if c.get('polarity') not in {'supports', 'contradicts', 'qualifies'}:
+                if c.get('polarity') not in {'supports', 'contradicts', 'qualifies', 'corrects', 'supersedes'}:
                     errors.append(f'{pid}: invalid claim polarity')
                 if c.get('field') not in {'actor', 'task', 'input', 'output', 'step', 'system', 'pain', 'burden', 'workaround', 'ai_attempt', 'failure', 'constraint', 'solution', 'feasibility', 'buying', 'resolution'} or not c.get('summary'):
                     errors.append(f'{pid}: missing/invalid claim field or summary')

@@ -1,5 +1,8 @@
 # Independent source review
 
+> Prefer the local review app (`python3 review_app.py`, see `REVIEW_APP.md` in the repository). The manual
+> page-and-CLI procedure below remains valid for a copied offline bundle. Label definitions apply to both.
+
 Open `index.html`, then a packet. The initial region is limited to 24 records and
 16,000 source Unicode characters. Available ancestry is preserved; nearby replies
 and their connector comments are selected by graph distance with deterministic
