@@ -132,6 +132,37 @@ class ReviewAppTests(unittest.TestCase):
         self.assertTrue(row['context_opened'])
         self.assertEqual(self.exported('telemetry.jsonl')[0]['viewed'], sorted(secondary[:3]))
 
+    def test_historical_episode_is_kept_but_not_counted_as_new(self):
+        pid = 'hacker_news-100'
+        p = self.store.packets[pid]
+        p['anchor_ids'] = [i for i in p['anchor_ids'] if i != '101']  # treat 101 as earlier context
+        old = self.episode('episode-1', '101')
+        self.draft(pid, 'no_candidate', [old])
+        with self.assertRaisesRegex(app.ReviewError, 'mark the episode as historical'):
+            self.store.commit(pid)
+        self.draft(pid, 'has_candidate', [dict(old, historical=True)])
+        with self.assertRaisesRegex(app.ReviewError, 'not historical'):
+            self.store.commit(pid)
+        self.draft(pid, 'no_candidate', [dict(self.episode('episode-1', '102'), historical=True)])
+        with self.assertRaisesRegex(app.ReviewError, 'cites in-window record 102'):
+            self.store.commit(pid)
+        bad = dict(old, historical=True, claims=[dict(old['claims'][0], end=10 ** 6)])
+        self.draft(pid, 'no_candidate', [bad])
+        with self.assertRaisesRegex(app.ReviewError, 'invalid role, basis, relation or span'):
+            self.store.commit(pid)
+        self.draft(pid, 'has_candidate', [dict(old, historical=True), self.episode('episode-2', '102')])
+        self.store.commit(pid)
+        row = self.exported('human_reference.reviewer-a.jsonl')[0]
+        self.assertEqual([e['episode_id'] for e in row['episodes']], ['episode-2'])
+        self.assertEqual([(e['episode_id'], e['historical'], e['anchor_ids']) for e in row['historical_episodes']],
+                         [('episode-1', True, [])])
+        self.assertEqual((row['review_burden']['episode_count'], row['review_burden']['historical_episode_count'],
+                          row['review_burden']['claim_count']), (1, 1, 2))
+        self.assertTrue(pilot.validate(self.root / 'reviewer', self.store.exports / 'human_reference.reviewer-a.jsonl')['valid'])
+        draft = self.store.revise(pid)['draft']
+        self.assertEqual([(e['episode_id'], e.get('historical', False)) for e in draft['episodes']],
+                         [('episode-2', False), ('episode-1', True)])
+
     def test_bodyless_packet_completes_as_insufficient_evidence(self):
         self.draft('hacker_news-200', 'insufficient_evidence')
         self.assertEqual(self.store.commit('hacker_news-200')['status'], 'insufficient_evidence')

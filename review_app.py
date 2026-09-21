@@ -93,6 +93,17 @@ def text_list(value):
     return [s.strip() for s in items if isinstance(s, str) and s.strip()]
 
 
+def valid_claim(c, source):
+    """The checks pilot.validate applies to claims, for episodes it never sees."""
+    text = source.get(c['text_field']) or ''
+    start, end = c.get('start'), c.get('end')
+    return (type(start) is int and type(end) is int and 0 <= start < end <= len(text)
+            and c.get('basis') in {'firsthand_report', 'secondhand_report', 'suggestion', 'question', 'hypothetical'}
+            and c.get('polarity') in {'supports', 'contradicts', 'qualifies', 'corrects', 'supersedes'}
+            and c.get('field') in {'actor', 'task', 'input', 'output', 'step', 'system', 'pain', 'burden', 'workaround',
+                                   'ai_attempt', 'failure', 'constraint', 'solution', 'feasibility', 'buying', 'resolution'})
+
+
 def compare(human, ai):
     """Describe differences; alignment by shared evidence records is only a suggestion."""
     def records(e):
@@ -248,7 +259,8 @@ class Store:
                 shown = commits[-1]['annotation'] if commits else body or {}
                 rows.append({'packet_id': pid, 'source': p['source'], 'status': self.status(pid, rid),
                              'open_revision': bool(commits and draft), 'revisions': len(commits),
-                             'outcome': shown.get('thread_label'), 'episodes': len(shown.get('episodes', [])),
+                             'outcome': shown.get('thread_label'),
+                             'episodes': sum(1 for e in shown.get('episodes', []) if not e.get('historical')),
                              'retained_records': p['retained_records'], 'characters': p['characters'],
                              'tokens_estimate': math.ceil(p['characters'] / 4),
                              'initial_record_count': reg['initial_record_count'],
@@ -312,7 +324,7 @@ class Store:
                 raise ReviewError('Nothing committed to revise', 409)
             if not self.draft_row(pid, rid):
                 a = commits[-1]['annotation']
-                body = {'thread_label': a['thread_label'], 'episodes': a['episodes'],
+                body = {'thread_label': a['thread_label'], 'episodes': a['episodes'] + a.get('historical_episodes', []),
                         'coverage_notes': a.get('coverage_notes', []),
                         'context_sufficiency': a['review_burden']['context_sufficiency'], 'revision_note': ''}
                 t = now()
@@ -361,7 +373,7 @@ class Store:
             errors.append('Choose a packet outcome.')
         if body.get('context_sufficiency') not in SUFFICIENCY:
             errors.append('Say whether the initially shown context was sufficient.')
-        episodes, seen = [], set()
+        episodes, historical, seen = [], [], set()
         for n, e in enumerate(body.get('episodes') or [], 1):
             name = f'Episode {n}'
             eid = e.get('episode_id') or f'episode-{n}'
@@ -381,15 +393,20 @@ class Store:
                     errors.append(f'{name}: evidence from {c["record_id"]} needs a one-line summary.')
                 # Bind the offsets to the exact source text they were selected against.
                 c['text_sha256'] = pilot.digest(source.get(c['text_field']) or '')
+                if e.get('historical') and not valid_claim(c, source):
+                    errors.append(f'{name}: evidence from {c["record_id"]} has an invalid role, basis, relation or span.')
                 claims.append(c)
             if not claims:
                 errors.append(f'{name}: link at least one source comment as evidence.')
             cited = [c['record_id'] for c in claims]
             # Derived from the linked evidence, so the reviewer never types or copies source IDs.
             anchors = [i for i in p['anchor_ids'] if i in set(cited)]
-            if claims and not anchors:
-                errors.append(f'{name}: needs evidence from at least one in-window record; '
-                              'an episode evidenced only by older context is historical, not new.')
+            if e.get('historical') and anchors:
+                errors.append(f'{name}: is marked historical but cites in-window record {anchors[0]}. '
+                              'Unmark it, or remove that evidence.')
+            elif claims and not anchors and not e.get('historical'):
+                errors.append(f'{name}: needs evidence from at least one in-window record. If the workflow appears '
+                              'only in earlier context, mark the episode as historical: it is kept, but not counted as new.')
             chosen = {c['record_id'] for c in claims if c.get('in_minimum_set') is not False}
             minimum = [i for i in p['record_ids'] if i in chosen]
             if claims and not minimum:
@@ -405,11 +422,17 @@ class Store:
                        'open_questions': text_list(e.get('open_questions')),
                        'details': pruned({k: text_list(v) if k in {'steps', 'inputs', 'outputs', 'systems'} else v
                                           for k, v in (e.get('details') or {}).items()})}
-            episodes.append(episode)
+            # Historical episodes stay outside `episodes`, which keeps meaning new in-window demand.
+            if e.get('historical'):
+                historical.append(dict(episode, historical=True))
+            else:
+                episodes.append(episode)
         if label == 'has_candidate' and not episodes:
-            errors.append('A concrete workflow outcome needs at least one episode.')
+            errors.append('A concrete workflow outcome needs at least one episode that is not historical.')
         if label in {'no_candidate', 'insufficient_evidence'} and episodes:
-            errors.append('This outcome records no episodes. Remove the episodes or choose another outcome.')
+            errors.append('This outcome records no new episodes. Remove them, mark them historical, or choose another outcome.')
+        if label == 'insufficient_evidence' and historical:
+            errors.append('A historical episode is textual evidence; choose an outcome other than insufficient textual evidence.')
         t = telemetry or {'viewed': [], 'context_opened': False, 'visible_seconds': 0, 'active_seconds': 0, 'started_at': None}
         reg = p['primary_region']
         expandable = set(reg['secondary_record_ids']) | set(reg['clipped_record_ids'])
@@ -427,11 +450,12 @@ class Store:
                       active_seconds=round(t['active_seconds']), started_at=t['started_at'],
                       supplemental_records_available=len(reg['secondary_record_ids']),
                       supplemental_records_viewed=len(set(viewed) & set(reg['secondary_record_ids'])),
-                      episode_count=len(episodes), claim_count=sum(len(e['claims']) for e in episodes),
+                      episode_count=len(episodes), claim_count=sum(len(e['claims']) for e in episodes + historical),
+                      historical_episode_count=len(historical),
                       revisions_after_commit=revision - 1, instrument=INSTRUMENT)
         return {'packet_id': pid, 'reviewer_id': rid, 'reviewer_kind': kind, 'status': 'reviewed',
                 'minutes': None, 'thread_label': label, 'coverage_notes': text_list(body.get('coverage_notes')),
-                'episodes': episodes, 'review_burden': burden}
+                'episodes': episodes, 'historical_episodes': historical, 'review_burden': burden}
 
     def commit(self, pid):
         rid = self.reviewer()

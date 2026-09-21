@@ -213,7 +213,7 @@ async function leavePacket() {
 
 /* ---------- autosave ---------- */
 function changed() {
-  S.dirty = true; S.confirm = null;
+  S.dirty = true; S.confirm = null; S.errors = [];  // stale once the draft changes
   clearTimeout(S.saveTimer); S.saveTimer = setTimeout(saveNow, 600);
   const s = $('#save-state'); if (s) s.textContent = 'Saving…';
 }
@@ -306,7 +306,9 @@ function jumpTo(id) {
 /* ---------- claims shown in the thread ---------- */
 function shownClaims() {
   const out = [];
-  const add = (ann, side) => (ann && ann.episodes || []).forEach((e, i) => (e.claims || []).forEach(c => out.push({c, side, n: i + 1})));
+  const add = (ann, side) => { if (!ann) return;
+    (ann.episodes || []).forEach((e, i) => (e.claims || []).forEach(c => out.push({c, side, n: (e.historical ? 'H' : 'E') + (i + 1)})));
+    (ann.historical_episodes || []).forEach((e, i) => (e.claims || []).forEach(c => out.push({c, side, n: 'H' + (i + 1)}))); };
   if (S.compare) { add(S.compare.human.annotation, 'human'); add(S.compare.reveal.ai_result.annotation, 'ai'); }
   else add(S.draft || (S.view.commits.length && S.view.commits[S.view.commits.length - 1].annotation), 'human');
   return out;
@@ -374,7 +376,7 @@ function comment(id, claims) {
   const mine = claims.filter(x => x.c.record_id === id);
   const spans = field => mine.filter(x => x.c.text_field === field && x.c.span_kind !== 'record' && !(x.c.start === 0 && x.c.end >= cpLength(r[field] || '')))
     .map(x => ({a: toU16(r[field] || '', x.c.start), b: toU16(r[field] || '', x.c.end), side: x.side,
-      title: `${x.side === 'ai' ? 'AI' : 'Human'} · episode ${x.n} · ${label(ROLES, x.c.field)} · ${label(RELATIONS, x.c.polarity)}`}));
+      title: `${x.side === 'ai' ? 'AI' : 'Human'} · ${x.n} · ${label(ROLES, x.c.field)} · ${label(RELATIONS, x.c.polarity)}`}));
   const collapsed = S.collapsed.has(id);
   const badges = [role !== 'other' && h('span', {class: 'badge ' + role, title: {root: 'Thread root', anchor: 'Structural anchor of the displayed region; chosen by ID hash, not relevance', ancestor: 'Ancestor of the anchor', reply: 'Reply beneath the anchor'}[role]}, role),
     !primary && h('span', {class: 'badge supp'}, 'supplemental context'),
@@ -391,7 +393,7 @@ function comment(id, claims) {
       : !showTitle && h('p', {class: 'muted small'}, '(no text retained for this record)'),
     clip && h('button', {class: 'link', onclick: e => { e.stopPropagation(); S.fullText.add(id); T.viewed.add(id); renderThread(); }}, `… show full text (+${fmt(fullLength - limit)} characters)`),
     mine.length > 0 && h('div', {class: 'chips'}, mine.map(x => h('span', {class: 'chip ' + x.side + ' ' + x.c.polarity},
-      `${x.side === 'ai' ? 'AI ' : ''}E${x.n} · ${label(ROLES, x.c.field)}${x.c.polarity !== 'supports' ? ' · ' + label(RELATIONS, x.c.polarity).toLowerCase() : ''}`))));
+      `${x.side === 'ai' ? 'AI ' : ''}${x.n} · ${label(ROLES, x.c.field)}${x.c.polarity !== 'supports' ? ' · ' + label(RELATIONS, x.c.polarity).toLowerCase() : ''}`))));
   const wrap = h('div', {class: 'node'}, el);
   if (kids.length && !collapsed) wrap.append(level(kids, claims));
   return wrap;
@@ -514,13 +516,12 @@ function editPanel() {
   out.push(h('h2', null, 'Outcome'), h('div', {class: 'outcomes'}, OUTCOMES.map(([v, t, hint], i) =>
     h('button', {class: 'outcome' + (d.thread_label === v ? ' on' : ''), 'aria-pressed': d.thread_label === v, onclick: () => setOutcome(v)},
       h('kbd', null, i + 1), h('span', null, h('b', null, t), h('small', null, hint))))));
-  const noEpisodes = ['no_candidate', 'insufficient_evidence'].includes(d.thread_label);
-  if (!noEpisodes || d.episodes.length) {
+  if (d.thread_label !== 'insufficient_evidence' || d.episodes.length) {
     out.push(h('div', {class: 'row'}, h('h2', null, `Workflow episodes (${d.episodes.length})`),
       h('button', {class: 'btn', onclick: () => { addEpisode(); renderPanel(); }, title: 'Shortcut: a'}, '+ Add episode')));
     if (!d.episodes.length) out.push(h('p', {class: 'muted small'}, 'Add an episode, or press “+ Evidence” on a comment to start one. A thread can hold several independent episodes.'));
     d.episodes.forEach((e, i) => out.push(i === S.active ? episodeCard(e, i) : h('button', {class: 'episode-tab', onclick: () => { S.active = i; S.pending = null; renderPanel(); }},
-      h('b', null, `E${i + 1}`), ' ', e.workflow || '(no description yet)', h('span', {class: 'count'}, `${e.claims.length} evidence`))));
+      h('b', null, `${e.historical ? 'H' : 'E'}${i + 1}`), ' ', e.workflow || '(no description yet)', e.historical && h('span', {class: 'badge'}, 'historical'), h('span', {class: 'count'}, `${e.claims.length} evidence`))));
   }
   out.push(h('h2', null, 'Context'),
     h('p', {class: 'muted small'}, 'Was the initially shown region enough for your judgment?'),
@@ -533,7 +534,10 @@ function episodeCard(e, i) {
   const x = e.details; if (!x.burden || typeof x.burden !== 'object') x.burden = {};
   const rerender = () => renderPanel();
   return h('div', {class: 'episode'},
-    h('div', {class: 'row'}, h('h3', null, `Episode ${i + 1}`), h('span', {class: 'grow'}),
+    h('div', {class: 'row'}, h('h3', null, `Episode ${i + 1}`),
+      h('label', {class: 'check small', title: 'The workflow appears only in earlier context, with no substantive in-window contribution. It is kept in the record but not counted as new demand, and needs no in-window evidence.'},
+        h('input', {type: 'checkbox', checked: !!e.historical, onchange: ev => { e.historical = ev.target.checked; changed(); renderPanel(); renderThread(); }}), 'Historical (earlier context only; not counted as new)'),
+      h('span', {class: 'grow'}),
       h('button', {class: 'link danger', onclick: () => { if (e.claims.length && S.confirm !== 'del' + i) { S.confirm = 'del' + i; toast('Press remove again to delete this episode and its evidence links.'); return; } S.draft.episodes.splice(i, 1); S.active = Math.max(0, i - 1); S.pending = null; changed(); renderPanel(); renderThread(); }}, 'Remove episode')),
     group('workflow', 'Actor and workflow', 0,
       field('Workflow / task', input(e, 'workflow', {placeholder: 'Short, supported description of the work'})),
@@ -609,7 +613,7 @@ function episodeSummary(e, i, side, pair) {
     ['Commercial', [(x.commercial_signals || []).map(c => label(COMMERCIAL, c)).join(', '), x.commercial_note].filter(Boolean).join(' — ')],
     ['Note', x.note], ['Open questions', lines(e.open_questions)]].filter(r => r[1]);
   return h('div', {class: 'episode summary ' + side},
-    h('h4', null, `${side === 'ai' ? 'AI' : 'Human'} E${i + 1}: `, e.workflow), h('p', {class: 'small muted'}, `Actor: ${e.actor_ref} · id ${e.episode_id}`),
+    h('h4', null, `${side === 'ai' ? 'AI' : 'Human'} ${e.historical ? 'H' : 'E'}${i + 1}: `, e.workflow, e.historical && h('span', {class: 'badge'}, 'historical · not counted as new')), h('p', {class: 'small muted'}, `Actor: ${e.actor_ref} · id ${e.episode_id}`),
     h('p', {class: 'small'}, h('span', {class: 'kv' + diff('need_status')}, 'Need: ' + label(NEED, e.need_status)), h('span', {class: 'kv' + diff('adoption_status')}, 'Adoption: ' + label(ADOPTION, e.adoption_status)),
       h('span', {class: 'kv' + diff('resolution')}, 'Resolution: ' + label(RESOLUTION, e.resolution))),
     h('p', {class: 'small'}, 'Gaps: ', (e.gap_labels || []).length ? e.gap_labels.map(g => h('span', {class: 'chip' + (gapOnly.has(g) ? ' diff' : '')}, label(GAPS, g))) : '—'),
@@ -633,6 +637,7 @@ function committedPanel() {
       `${when(last.committed_at)} · ${a.reviewer_id} · ${a.reviewer_kind.replace('_', ' ')}`),
     h('h2', null, 'Outcome'), h('p', null, h('b', null, label(OUTCOMES, a.thread_label))),
     a.episodes.map((e, i) => episodeSummary(e, i, 'human')),
+    (a.historical_episodes || []).map((e, i) => episodeSummary(e, i, 'human')),
     h('p', {class: 'small muted'}, `Context: ${label(SUFFICIENCY, b.context_sufficiency)} · scope ${b.review_scope.replace('_', ' ')} · extra context ${b.extra_context_opened ? `opened (${b.expanded_record_ids.length} records viewed)` : 'not opened'} · active ${Math.round(b.active_seconds / 6) / 10} min`),
     a.coverage_notes.length > 0 && h('p', {class: 'small'}, 'Coverage notes: ', a.coverage_notes.join(' · ')),
     commits.length > 1 && h('details', null, h('summary', null, `Revision history (${commits.length})`), h('ul', {class: 'small'}, commits.map(c => h('li', null, `r${c.revision} · ${when(c.committed_at)} · ${label(OUTCOMES, c.annotation.thread_label)} · ${c.annotation.episodes.length} episodes${c.revision_note ? ' — ' + c.revision_note : ''}`))))];
@@ -692,7 +697,10 @@ function comparePanel() {
           h('div', {class: 'cols'}, field('Need', select(row.merged, 'need_status', NEED)), field('Adoption', select(row.merged, 'adoption_status', ADOPTION)), field('Resolution', select(row.merged, 'resolution', RESOLUTION))),
           checks(row.merged, 'gap_labels', GAPS), field('Merge note', input(row.merged, 'note'))))));
   });
-  if (!adj.episodes.length) out.push(h('p', {class: 'muted'}, 'Neither side recorded an episode.'));
+  if (!adj.episodes.length) out.push(h('p', {class: 'muted'}, 'Neither side recorded a new episode.'));
+  if ((H.historical_episodes || []).length) out.push(h('h2', null, 'Human historical episodes'),
+    h('p', {class: 'small muted'}, 'Recorded from earlier context only and not counted as new, so they are not paired or adjudicated. Compare them by eye with any AI episode built on the same records.'),
+    H.historical_episodes.map((e, i) => episodeSummary(e, i, 'human')));
   out.push(h('h2', null, 'Adjudication'),
     latest && h('div', {class: 'notice ok'}, `Adjudication v${latest.version} recorded ${when(latest.recorded_at)}: ${latest.decision.rationale} `, h('span', {class: 'muted'}, 'Recording again adds a new version; earlier ones are kept.')),
     field('Overall rationale', h('textarea', {rows: 2, value: adj.rationale, oninput: e => { adj.rationale = e.target.value; }})));

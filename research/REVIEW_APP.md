@@ -42,6 +42,14 @@ description and one evidence link from an in-window record are required per
 episode; every other field is optional and omitted from the record when empty.
 Press `?` for keyboard shortcuts.
 
+Tick **Historical** on an episode whose workflow appears only in earlier context,
+with no substantive in-window contribution. It needs no in-window evidence and may
+not cite any. It is exported under `historical_episodes` (with `historical: true`
+and empty `anchor_ids`), never under `episodes`, so `episodes` and the packet
+outcome keep meaning new in-window demand: a packet whose only episode is
+historical is normally *No workflow opportunity observed*. Historical episodes are
+shown in the comparison but are not paired or adjudicated.
+
 Drafts autosave to SQLite. **Commit human review** writes an immutable revision.
 Later corrections use **Revise**, which requires a reason and adds revision N+1;
 earlier revisions cannot be updated or deleted (enforced by database triggers).
@@ -87,7 +95,7 @@ constraints, commercial signals), claims add `claim_id`, `span_kind`
 (`record` or `span`), `relates_to`, `in_minimum_set` and `text_sha256`, and
 `polarity` also accepts `corrects` and `supersedes`. `review_burden` keeps the
 v2 fields and adds `active_seconds`, `started_at`, supplemental counts, episode
-and claim counts and `revisions_after_commit`. `anchor_ids` are the cited
+and claim counts, `historical_episode_count` and `revisions_after_commit`. `anchor_ids` are the cited
 in-window records; `minimum_record_ids` are cited records left in the minimum set.
 
 Measurement limits: visible seconds count a foreground tab; active seconds also
