@@ -151,7 +151,7 @@ async function renderQueue() {
   const rows = await api('GET', '/api/queue');
   let filter = sessionStorage.getItem('queue-filter') || '';
   const body = h('tbody');
-  const draw = () => body.replaceChildren(...rows.map((r, i) => (!filter || r.status === filter) && h('tr', {
+  const draw = () => body.replaceChildren(...rows.map((r, i) => ({r, i})).filter(({r}) => !filter || r.status === filter).map(({r, i}) => h('tr', {
     onclick: () => go('#/p/' + encodeURIComponent(r.packet_id))},
     h('td', {class: 'num'}, i + 1),
     h('td', null, h('a', {href: '#/p/' + encodeURIComponent(r.packet_id)}, r.packet_id)),
