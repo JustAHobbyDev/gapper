@@ -38,17 +38,17 @@ episodes, press **+ Evidence** on a comment or select text inside one, choose a
 role, basis and relation (supporting, contradicting, correcting, superseding,
 qualifying), and write a one-line summary. Source IDs, field, code-point offsets
 and a hash of the source text are stored automatically. Only the workflow
-description and one evidence link from an in-window record are required per
-episode; every other field is optional and omitted from the record when empty.
+description and one evidence link are required per episode; every other field is optional and omitted from the record when empty.
 Press `?` for keyboard shortcuts.
 
-Tick **Historical** on an episode whose workflow appears only in earlier context,
-with no substantive in-window contribution. It needs no in-window evidence and may
-not cite any. It is exported under `historical_episodes` (with `historical: true`
-and empty `anchor_ids`), never under `episodes`, so `episodes` and the packet
-outcome keep meaning new in-window demand: a packet whose only episode is
-historical is normally *No workflow opportunity observed*. Historical episodes are
-shown in the comparison but are not paired or adjudicated.
+An episode whose evidence cites no in-window record is **historical**. This is
+derived from the evidence links, not chosen: the episode card shows a badge, and
+linking an in-window comment makes the episode new. Historical episodes are
+exported under `historical_episodes` (with `historical: true` and empty
+`anchor_ids`), never under `episodes`, so `episodes` and the packet outcome keep
+meaning new in-window demand: a packet whose only episode is historical is
+normally *No workflow opportunity observed*. They are shown in the comparison
+but are not paired or adjudicated.
 
 Drafts autosave to SQLite. **Commit human review** writes an immutable revision.
 Later corrections use **Revise**, which requires a reason and adds revision N+1;

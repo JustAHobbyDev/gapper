@@ -307,7 +307,7 @@ function jumpTo(id) {
 function shownClaims() {
   const out = [];
   const add = (ann, side) => { if (!ann) return;
-    (ann.episodes || []).forEach((e, i) => (e.claims || []).forEach(c => out.push({c, side, n: (e.historical ? 'H' : 'E') + (i + 1)})));
+    (ann.episodes || []).forEach((e, i) => (e.claims || []).forEach(c => out.push({c, side, n: (isHistorical(e) ? 'H' : 'E') + (i + 1)})));
     (ann.historical_episodes || []).forEach((e, i) => (e.claims || []).forEach(c => out.push({c, side, n: 'H' + (i + 1)}))); };
   if (S.compare) { add(S.compare.human.annotation, 'human'); add(S.compare.reveal.ai_result.annotation, 'ai'); }
   else add(S.draft || (S.view.commits.length && S.view.commits[S.view.commits.length - 1].annotation), 'human');
@@ -414,6 +414,11 @@ function renderHits() {
 
 /* ---------- evidence ---------- */
 function episode() { return S.draft.episodes[S.active]; }
+/* Derived, never chosen: an episode with evidence but none from an in-window record. */
+function isHistorical(e) {
+  const fresh = new Set(S.view.packet.anchor_ids);
+  return (e.claims || []).length > 0 && !e.claims.some(c => fresh.has(c.record_id));
+}
 function addEpisode() {
   const ids = new Set(S.draft.episodes.map(e => e.episode_id)); let n = S.draft.episodes.length + 1;
   while (ids.has('episode-' + n)) n++;
@@ -521,7 +526,7 @@ function editPanel() {
       h('button', {class: 'btn', onclick: () => { addEpisode(); renderPanel(); }, title: 'Shortcut: a'}, '+ Add episode')));
     if (!d.episodes.length) out.push(h('p', {class: 'muted small'}, 'Add an episode, or press “+ Evidence” on a comment to start one. A thread can hold several independent episodes.'));
     d.episodes.forEach((e, i) => out.push(i === S.active ? episodeCard(e, i) : h('button', {class: 'episode-tab', onclick: () => { S.active = i; S.pending = null; renderPanel(); }},
-      h('b', null, `${e.historical ? 'H' : 'E'}${i + 1}`), ' ', e.workflow || '(no description yet)', e.historical && h('span', {class: 'badge'}, 'historical'), h('span', {class: 'count'}, `${e.claims.length} evidence`))));
+      h('b', null, `${isHistorical(e) ? 'H' : 'E'}${i + 1}`), ' ', e.workflow || '(no description yet)', isHistorical(e) && h('span', {class: 'badge'}, 'historical'), h('span', {class: 'count'}, `${e.claims.length} evidence`))));
   }
   out.push(h('h2', null, 'Context'),
     h('p', {class: 'muted small'}, 'Was the initially shown region enough for your judgment?'),
@@ -535,8 +540,7 @@ function episodeCard(e, i) {
   const rerender = () => renderPanel();
   return h('div', {class: 'episode'},
     h('div', {class: 'row'}, h('h3', null, `Episode ${i + 1}`),
-      h('label', {class: 'check small', title: 'The workflow appears only in earlier context, with no substantive in-window contribution. It is kept in the record but not counted as new demand, and needs no in-window evidence.'},
-        h('input', {type: 'checkbox', checked: !!e.historical, onchange: ev => { e.historical = ev.target.checked; changed(); renderPanel(); renderThread(); }}), 'Historical (earlier context only; not counted as new)'),
+      isHistorical(e) && h('span', {class: 'badge anchor', title: 'None of this episode’s evidence cites an in-window record, so it is recorded as historical: kept, but not counted as new demand. Linking evidence from an in-window comment makes it a new episode.'}, 'historical · not counted as new'),
       h('span', {class: 'grow'}),
       h('button', {class: 'link danger', onclick: () => { if (e.claims.length && S.confirm !== 'del' + i) { S.confirm = 'del' + i; toast('Press remove again to delete this episode and its evidence links.'); return; } S.draft.episodes.splice(i, 1); S.active = Math.max(0, i - 1); S.pending = null; changed(); renderPanel(); renderThread(); }}, 'Remove episode')),
     group('workflow', 'Actor and workflow', 0,

@@ -260,7 +260,8 @@ class Store:
                 rows.append({'packet_id': pid, 'source': p['source'], 'status': self.status(pid, rid),
                              'open_revision': bool(commits and draft), 'revisions': len(commits),
                              'outcome': shown.get('thread_label'),
-                             'episodes': sum(1 for e in shown.get('episodes', []) if not e.get('historical')),
+                             'episodes': sum(1 for e in shown.get('episodes', []) if not e.get('claims')
+                                             or any(c.get('record_id') in p['anchor_ids'] for c in e['claims'])),
                              'retained_records': p['retained_records'], 'characters': p['characters'],
                              'tokens_estimate': math.ceil(p['characters'] / 4),
                              'initial_record_count': reg['initial_record_count'],
@@ -393,7 +394,7 @@ class Store:
                     errors.append(f'{name}: evidence from {c["record_id"]} needs a one-line summary.')
                 # Bind the offsets to the exact source text they were selected against.
                 c['text_sha256'] = pilot.digest(source.get(c['text_field']) or '')
-                if e.get('historical') and not valid_claim(c, source):
+                if not valid_claim(c, source):
                     errors.append(f'{name}: evidence from {c["record_id"]} has an invalid role, basis, relation or span.')
                 claims.append(c)
             if not claims:
@@ -401,12 +402,6 @@ class Store:
             cited = [c['record_id'] for c in claims]
             # Derived from the linked evidence, so the reviewer never types or copies source IDs.
             anchors = [i for i in p['anchor_ids'] if i in set(cited)]
-            if e.get('historical') and anchors:
-                errors.append(f'{name}: is marked historical but cites in-window record {anchors[0]}. '
-                              'Unmark it, or remove that evidence.')
-            elif claims and not anchors and not e.get('historical'):
-                errors.append(f'{name}: needs evidence from at least one in-window record. If the workflow appears '
-                              'only in earlier context, mark the episode as historical: it is kept, but not counted as new.')
             chosen = {c['record_id'] for c in claims if c.get('in_minimum_set') is not False}
             minimum = [i for i in p['record_ids'] if i in chosen]
             if claims and not minimum:
@@ -422,15 +417,17 @@ class Store:
                        'open_questions': text_list(e.get('open_questions')),
                        'details': pruned({k: text_list(v) if k in {'steps', 'inputs', 'outputs', 'systems'} else v
                                           for k, v in (e.get('details') or {}).items()})}
-            # Historical episodes stay outside `episodes`, which keeps meaning new in-window demand.
-            if e.get('historical'):
+            # An episode citing no in-window record is historical by definition, not by reviewer choice. It stays
+            # outside `episodes`, which keeps meaning new in-window demand.
+            if claims and not anchors:
                 historical.append(dict(episode, historical=True))
             else:
                 episodes.append(episode)
         if label == 'has_candidate' and not episodes:
-            errors.append('A concrete workflow outcome needs at least one episode that is not historical.')
+            errors.append('A concrete workflow outcome needs at least one episode with evidence from an in-window record; '
+                          'episodes evidenced only by earlier context are historical.')
         if label in {'no_candidate', 'insufficient_evidence'} and episodes:
-            errors.append('This outcome records no new episodes. Remove them, mark them historical, or choose another outcome.')
+            errors.append('This outcome records no new episodes, but an episode cites in-window evidence. Remove it or choose another outcome.')
         if label == 'insufficient_evidence' and historical:
             errors.append('A historical episode is textual evidence; choose an outcome other than insufficient textual evidence.')
         t = telemetry or {'viewed': [], 'context_opened': False, 'visible_seconds': 0, 'active_seconds': 0, 'started_at': None}
