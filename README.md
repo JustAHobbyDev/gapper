@@ -106,5 +106,14 @@ ten-record exploratory corpus is not incorporated into this acquisition.
 
 The completed first run is documented in [EXPERIMENT.md](EXPERIMENT.md).
 Its HN conversation analysis is in [HN_CONVERSATIONS.md](HN_CONVERSATIONS.md).
+The proposed workflow and failed-adoption detection research, including context
+experiments to run before implementation, is in
+[WORKFLOW_OPPORTUNITY_RESEARCH.md](WORKFLOW_OPPORTUNITY_RESEARCH.md).
+The first context pilot is prepared in [CONTEXT_PILOT.md](CONTEXT_PILOT.md), with
+[annotation instructions](research/ANNOTATION_GUIDE.md) and offline `pilot.py` tooling.
 The complete original requirements are in
 [handoff/001-raw-acquisition-probe.md](handoff/001-raw-acquisition-probe.md).
+
+Independent labeling uses the [source-only review workflow](research/BLIND_REVIEW.md):
+commit the human interpretation first, reveal its sealed AI annotation second,
+and preserve disagreements in a separate adjudication record.

@@ -107,3 +107,101 @@ This changes enumeration within the existing public-source domain, not the goal
 or opportunity-selection criteria. Reports retain activity-list boundaries and
 IDs added by the supplementary pass. Avoid claiming inaccessible and hidden are
 synonymous: public endpoint behavior is the observable boundary.
+
+## Entry #2 — 2026-09-20 — Workflow opportunity research, including failed adoption
+
+### Domains
+
+The proposed machine is an offline evidence analyzer, separate from acquisition.
+Independent domains: discussion authors (biddable, observed only through their
+reports); public services (changing causal interfaces); archived responses and
+conversation relationships (lexical snapshots); a researcher reviewing candidates
+(biddable). Actual workplaces, budgets, permissions, and systems are outside the
+observable boundary. Authors' claims are not independently verified workplace facts.
+Machine-owned domains: candidate regions, extracted evidence, implementation
+hypotheses, cross-discussion groups, and versioned reviewer labels (lexical).
+Potential model service: causal interface with nondeterministic outputs; a future
+boundary carrying selected text out and derived claims in, not introduced now.
+
+### Frame split
+
+1. Evidence reconstruction: Transformation of archived discussion into attributed
+   workflow claims with supporting spans and coverage limits.
+2. Hypothesis synthesis: Transformation of evidence into provisional gap classes
+   and implementation hypotheses, explicitly separated from participant reports.
+3. Review and comparison: Information Display of candidates and evidence; Simple
+   Workpieces for future researcher corrections and merge/split decisions.
+4. Acquisition remains Entry #1; semantic screening must not change its sample.
+
+### Requirements (per frame, with explicit out-of-scope)
+
+1. A reviewer can reconstruct who reported which task, friction, attempt, and
+   constraint, including contributions distributed across replies. Do not invent
+   missing steps or combine different workplaces into a fictional workflow.
+2. A reviewer can distinguish unmet need, failed adoption, suggested remedy, and
+   demonstrated solution. No guarantee of feasibility, buying intent, or market
+   absence; no implementation or autonomous action on source systems.
+3. A reviewer can compare evidence quality, inspect counterevidence, and correct
+   groups without destroying source lineage. Ranking is research priority, not
+   expected revenue. No outreach, production detector, or trained weights now.
+
+### Invariance test
+
+Pass for claims grounded in immutable snapshots and explicit provenance. Reject
+the frame of discovering objectively profitable, currently unsolved businesses
+from comments alone: willingness to pay, present tools, and access permissions
+change independently and are not observed. Reframe as evidence-backed research
+candidates, with later dated technical and customer validation.
+
+### Stakeholder test
+
+Customer-feedback products commonly serve an existing product team with known
+customers and a feature hierarchy. Gapper's researcher has neither. Transfer
+evidence linking and review, not account revenue, customer identity, a predefined
+feature taxonomy, or assumptions of product demand. Productboard's own
+[auto-linking documentation](https://support.productboard.com/hc/en-us/articles/26949590820627-Link-insights-automatically-with-Productboard-AI)
+illustrates that distinction. DialogRE and PET offer extraction techniques,
+not validation of Gapper's commercial target.
+
+### Open questions — decided here, with reasoning
+
+- Missing evidence is unknown; missing context is partial coverage, not a negative.
+- Keep actor/workflow evidence clusters separate from cross-thread workflow families.
+- A reply can supply a hypothesis; it cannot prove the original actor tried it.
+- In-window human evidence anchors new candidates. Historical context and system
+  bumps do not become new demand; updates retain their original evidence times.
+- Preserve contradictory and resolved reports. Derived state is versioned and
+  rebuildable; reviewer decisions persist separately from model output.
+- Propose staged analysis, but compare it against simpler baselines before choosing
+  model calls, thresholds, or a graph infrastructure dependency.
+
+### Carried forward
+
+Research recommendations and planned experiments are in
+[WORKFLOW_OPPORTUNITY_RESEARCH.md](WORKFLOW_OPPORTUNITY_RESEARCH.md).
+This entry extends the conceptual boundary only. Implementation, source changes,
+model calls on the corpus, and semantic experiment execution remain future work.
+
+### Addendum — 2026-09-21 — Context pilot preparation
+
+The user endorsed the next experiment. Implement offline, deterministic packet
+selection and annotation preparation within Entry #2's snapshot/review boundary.
+Freeze structural sampling, source lineage, provisional root-level splits, and
+B0/B1/B2/B3/B5 input definitions. Preserve existing outputs on reruns. Independent
+human labels are an external input, not something the machine can manufacture.
+AI-assisted exploratory judgments must be separately labeled and must not be used
+to claim human agreement or held-out accuracy. B4 selection and B6 human evidence
+remain distinct from deterministic context export. Acquisition stays unchanged.
+
+### Addendum — 2026-09-21 — Human-first commitment and AI reveal
+
+The user explicitly chose parallel, separate provisional AI annotations and
+independent human labeling. Add a source-only reviewer bundle, private AI results,
+write-once human commitments, gated per-packet comparisons, and separate
+adjudication records within the existing review/workpiece frame. Record exposure
+and preserve disagreements; never replace the human or AI original. A single
+human's interpretation is an exploratory reference, not validated ground truth
+or human inter-annotator agreement. The gate prevents accidental workflow leaks;
+it does not assert OS-level secrecy or undo earlier exposure. AI results for a
+blind pair must be sealed before the human commitment. No human label is generated
+or committed by the agent on the user's behalf.
