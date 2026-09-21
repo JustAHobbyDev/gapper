@@ -149,9 +149,20 @@ function renderSettings() {
 async function renderQueue() {
   S.pid = null;
   const rows = await api('GET', '/api/queue');
-  let filter = sessionStorage.getItem('queue-filter') || '';
+  let filter = new Set();  // empty = all statuses
+  try { filter = new Set(JSON.parse(sessionStorage.getItem('queue-filters') || '[]').filter(k => k in STATUS)); } catch (_) { /* unfiltered */ }
+  const counts = {}; rows.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
+  const chips = h('div', {class: 'seg', role: 'group', 'aria-label': 'Filter by status'});
+  const drawChips = () => chips.replaceChildren(
+    h('button', {type: 'button', class: filter.size ? '' : 'on', 'aria-pressed': !filter.size, onclick: () => pick(null)}, `All statuses (${rows.length})`),
+    ...Object.entries(STATUS).map(([k, v]) => h('button', {type: 'button', class: filter.has(k) ? 'on' : '', 'aria-pressed': filter.has(k), onclick: () => pick(k)}, `${v} (${counts[k] || 0})`)));
+  const pick = k => {
+    if (k === null) filter.clear(); else if (!filter.delete(k)) filter.add(k);
+    if (filter.size === Object.keys(STATUS).length) filter.clear();
+    sessionStorage.setItem('queue-filters', JSON.stringify([...filter])); drawChips(); draw();
+  };
   const body = h('tbody');
-  const draw = () => body.replaceChildren(...rows.map((r, i) => ({r, i})).filter(({r}) => !filter || r.status === filter).map(({r, i}) => h('tr', {
+  const draw = () => body.replaceChildren(...rows.map((r, i) => ({r, i})).filter(({r}) => !filter.size || filter.has(r.status)).map(({r, i}) => h('tr', {
     onclick: () => go('#/p/' + encodeURIComponent(r.packet_id))},
     h('td', {class: 'num'}, i + 1),
     h('td', null, h('a', {href: '#/p/' + encodeURIComponent(r.packet_id)}, r.packet_id)),
@@ -162,11 +173,10 @@ async function renderQueue() {
     h('td', {class: 'num'}, `${fmt(r.initial_characters)} / ${fmt(r.characters)}`),
     h('td', {class: 'num'}, `~${fmt(r.initial_tokens_estimate)} / ~${fmt(r.tokens_estimate)}`),
     h('td', null, r.context_opened ? 'Yes' : r.status === 'not_reviewed' ? '—' : 'No'))));
-  draw();
+  drawChips(); draw();
   $('#main').replaceChildren(h('section', {class: 'pad'},
     h('div', {class: 'row'}, h('h1', null, 'Review queue'),
-      h('select', {'aria-label': 'Filter by status', onchange: e => { filter = e.target.value; sessionStorage.setItem('queue-filter', filter); draw(); }},
-        h('option', {value: ''}, 'All statuses'), Object.entries(STATUS).map(([k, v]) => h('option', {value: k, selected: filter === k}, v)))),
+      chips),
     h('table', {class: 'queue'}, h('thead', null, h('tr', null,
       ['#', 'Packet', 'Status', 'Outcome', 'Episodes', 'Records shown / retained', 'Characters shown / retained', 'Tokens shown / retained (chars ÷ 4)', 'Extra context opened'].map(t => h('th', null, t)))), body)));
 }
