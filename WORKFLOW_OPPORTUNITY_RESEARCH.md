@@ -416,6 +416,24 @@ Within a fixed review budget, compare human pairwise preferences and precision
 among the first K candidates. Maintain a separate uncertain-but-potentially-useful
 queue so sparse evidence does not disappear permanently.
 
+### Commercial opportunity does not require an underserved market
+
+An opportunity does **not** need to be novel, underserved, or free of established
+competitors. Service markets can accommodate multiple providers with finite
+capacity. Existing offers, buyer requests, completed contracts, and customer
+reviews can provide evidence of commercial demand rather than automatically
+disqualifying a candidate. Conversely, an absence of competitors does not itself
+establish unmet demand.
+
+Keep market existence, buyer willingness to pay, competitor offerings, entry
+feasibility, delivery economics, and customer-acquisition costs as distinct
+questions. A posted budget is weaker evidence than a completed engagement, and
+neither proves that a new provider can acquire customers profitably. Record the
+source and uncertainty of each claim. Advance commercial investigation one
+justified evidence gate at a time; stop or narrow it when further work is not
+warranted. These criteria do not change the separate need to validate extraction
+accuracy or evidence attribution.
+
 | Factor | Supportable from current text? | Treatment before validation |
 | --- | --- | --- |
 | Workflow specificity | Yes, via supported actor/action/artifact relations | Ordinal rubric: absent, partial, reconstructable; do not count words. |
@@ -428,7 +446,7 @@ queue so sparse evidence does not disappear permanently.
 | Independent corroboration | Partially measurable | Count episodes with independence caveats, not upvotes or generic agreement. |
 | Professional context | Reported role/task can support it | No automatic premium for prestigious or regulated industries. |
 | APIs, permissions, deployment access | Sometimes claimed | Verify later against actual system/version and authorized access; no inference from brand alone. |
-| Competition / existing products | A thread can name alternatives | Coverage is incomplete; product absence needs dated external research. |
+| Competition / existing products | A thread can name alternatives | Incumbents are not a disqualifier; claims about competition or product absence need dated external research. |
 | Complexity, project size, solo-developer fit | Mostly inferred | Later reviewer assessment against explicit skills, time, integrations, and maintenance constraints. |
 | Realizable ROI, budget, sales access | Generally not established | Customer/technical validation required; do not fabricate dollar scores. |
 | Grounding, coverage, contradictions, resolution | Directly assessable | Display alongside every dimension; reportedly solved cases leave the unresolved queue. |
